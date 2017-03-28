@@ -45,9 +45,9 @@ import static cn.fish.gesturechecker.view.AlphabetDiscView.Letter.__Z;
 public class AlphabetDiscView extends View implements View.OnTouchListener {
     final int RECORD_SIZE = 16;
     final long TIME_THRESHOLD = 1000L;
-    final float DISTANCE_SQ_THRESHOLD = 100.0F;
-    final float GRADIENT_MIN_THRESHOLD = 0.577F;
-    final float GRADIENT_MAX_THRESHOLD = 1.73F;
+    final float DISTANCE_SQ_THRESHOLD = 5000.0F;
+    final float GRADIENT_MIN_THRESHOLD = 0.5F;
+    final float GRADIENT_MAX_THRESHOLD = 2F;
 
     private Vector<GestureDirection> mGestureRecord;
     private GestureNode mPointNode = new GestureNode();
@@ -58,6 +58,7 @@ public class AlphabetDiscView extends View implements View.OnTouchListener {
     private long mLastUpTime = 0L;
 
     private GestureDirection mCurrDire = IDLE;
+    private GestureDirection mDireBuf = IDLE;
     private LetterCallback mLetterCallback;
     private boolean isPosting = false;
 
@@ -112,9 +113,13 @@ public class AlphabetDiscView extends View implements View.OnTouchListener {
         GestureDirection tmpDiretion = parseDist();
         if (tmpDiretion == mCurrDire) {
             mPointNode.cover(mCurrentNode);
-        } else {
+            if (mDireBuf != tmpDiretion) {
+                mDireBuf = mCurrDire;
+                mGestureRecord.add(tmpDiretion);
+            }
+        }
+        else {
             mCurrDire = tmpDiretion;
-            mGestureRecord.add(tmpDiretion);
         }
     }
 
@@ -146,6 +151,7 @@ public class AlphabetDiscView extends View implements View.OnTouchListener {
             }
         } else if (event.getAction() == MotionEvent.ACTION_UP) {
             mCurrDire = IDLE;
+            mDireBuf = IDLE;
             mLastUpTime = System.currentTimeMillis();
             if (mGestureRecord.size() > 0) {
                 mGestureRecord.add(IDLE);
@@ -227,7 +233,7 @@ public class AlphabetDiscView extends View implements View.OnTouchListener {
                                 currGD = mGestureRecord.get(ptr++);
                                 if (currGD == IDLE) {
                                     return __X;
-                                } else if (currGD == UR) {
+                                } else if (currGD == UR || currGD ==UP) {
                                     currGD = mGestureRecord.get(ptr++);
                                     if (currGD == IDLE) {
                                         return __N;
