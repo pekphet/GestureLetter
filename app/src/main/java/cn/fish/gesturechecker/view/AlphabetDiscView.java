@@ -9,8 +9,14 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Vector;
 
+import cn.fish.gesturechecker.utils.CollectionUtils;
+
+import static cn.fish.gesturechecker.view.AlphabetDiscView.GestureDirection.CL;
+import static cn.fish.gesturechecker.view.AlphabetDiscView.GestureDirection.CR;
 import static cn.fish.gesturechecker.view.AlphabetDiscView.GestureDirection.DL;
 import static cn.fish.gesturechecker.view.AlphabetDiscView.GestureDirection.DN;
 import static cn.fish.gesturechecker.view.AlphabetDiscView.GestureDirection.DR;
@@ -21,15 +27,19 @@ import static cn.fish.gesturechecker.view.AlphabetDiscView.GestureDirection.UL;
 import static cn.fish.gesturechecker.view.AlphabetDiscView.GestureDirection.UP;
 import static cn.fish.gesturechecker.view.AlphabetDiscView.GestureDirection.UR;
 import static cn.fish.gesturechecker.view.AlphabetDiscView.Letter.__A;
+import static cn.fish.gesturechecker.view.AlphabetDiscView.Letter.__C;
+import static cn.fish.gesturechecker.view.AlphabetDiscView.Letter.__D;
 import static cn.fish.gesturechecker.view.AlphabetDiscView.Letter.__E;
 import static cn.fish.gesturechecker.view.AlphabetDiscView.Letter.__ERR;
 import static cn.fish.gesturechecker.view.AlphabetDiscView.Letter.__F;
+import static cn.fish.gesturechecker.view.AlphabetDiscView.Letter.__G;
 import static cn.fish.gesturechecker.view.AlphabetDiscView.Letter.__H;
 import static cn.fish.gesturechecker.view.AlphabetDiscView.Letter.__J;
 import static cn.fish.gesturechecker.view.AlphabetDiscView.Letter.__K;
 import static cn.fish.gesturechecker.view.AlphabetDiscView.Letter.__L;
 import static cn.fish.gesturechecker.view.AlphabetDiscView.Letter.__M;
 import static cn.fish.gesturechecker.view.AlphabetDiscView.Letter.__N;
+import static cn.fish.gesturechecker.view.AlphabetDiscView.Letter.__R;
 import static cn.fish.gesturechecker.view.AlphabetDiscView.Letter.__T;
 import static cn.fish.gesturechecker.view.AlphabetDiscView.Letter.__U;
 import static cn.fish.gesturechecker.view.AlphabetDiscView.Letter.__V;
@@ -45,9 +55,12 @@ import static cn.fish.gesturechecker.view.AlphabetDiscView.Letter.__Z;
 public class AlphabetDiscView extends View implements View.OnTouchListener {
     final int RECORD_SIZE = 16;
     final long TIME_THRESHOLD = 1000L;
-    final float DISTANCE_SQ_THRESHOLD = 5000.0F;
-    final float GRADIENT_MIN_THRESHOLD = 0.5F;
-    final float GRADIENT_MAX_THRESHOLD = 2F;
+    final float DISTANCE_SQ_THRESHOLD = 2500.0F;
+    final float GRADIENT_MIN_THRESHOLD = 0.25F;
+    final float GRADIENT_MAX_THRESHOLD = 4F;
+
+    final Vector<GestureDirection> RIGHT_CIRCLE = new Vector<GestureDirection>(Arrays.asList(RT, DR, DN, DL, LT));
+    final Vector<GestureDirection> LEFT_CIRCLE = new Vector<GestureDirection>(Arrays.asList(LT, DL, DN, DR, RT));
 
     private Vector<GestureDirection> mGestureRecord;
     private GestureNode mPointNode = new GestureNode();
@@ -182,6 +195,8 @@ public class AlphabetDiscView extends View implements View.OnTouchListener {
 
     private Letter parseLetter() {
         ZLogLetter();
+        fixLetterData();
+        ZLogLetter();
         int idleCount = checkCount(mGestureRecord, IDLE);
         int ptr = 0;
         GestureDirection currGD = mGestureRecord.get(ptr++);
@@ -196,7 +211,7 @@ public class AlphabetDiscView extends View implements View.OnTouchListener {
                     if (currGD == DN || currGD == DL) {
                         // J, L, U
                         currGD = mGestureRecord.get(ptr++);
-                        if (currGD == LT && mGestureRecord.get(ptr++) == IDLE) {
+                        if ((currGD == LT || currGD == DL) && mGestureRecord.get(ptr++) == IDLE) {
                             return __J;
                         } else if (currGD == RT) {
                             currGD = mGestureRecord.get(ptr++);
@@ -220,6 +235,16 @@ public class AlphabetDiscView extends View implements View.OnTouchListener {
                         if (currGD == DL && mGestureRecord.get(ptr++) == RT && mGestureRecord.get(ptr++) == IDLE) {
                             return __Z;
                         }
+                    } else if (currGD == CL) {
+                        // C,G
+                        currGD = mGestureRecord.get(ptr++);
+                        if (currGD == IDLE) {
+                            return __C;
+                        } else if (currGD == UL || currGD == LT || currGD == DN) {
+                            if (mGestureRecord.get(ptr) == IDLE) {
+                                return __G;
+                            }
+                        }
                     }
                     break;
                 case 2:             // K, M, N, T, X, Y
@@ -237,7 +262,7 @@ public class AlphabetDiscView extends View implements View.OnTouchListener {
                                     currGD = mGestureRecord.get(ptr++);
                                     if (currGD == IDLE) {
                                         return __N;
-                                    } else if (currGD == DR && mGestureRecord.get(ptr) == IDLE) {
+                                    } else if ((currGD == DR || currGD == DN) && mGestureRecord.get(ptr) == IDLE) {
                                         return __M;
                                     }
                                 }
@@ -245,6 +270,14 @@ public class AlphabetDiscView extends View implements View.OnTouchListener {
                                 currGD = mGestureRecord.get(ptr++);
                                 if (currGD == DR && mGestureRecord.get(ptr) == IDLE) {
                                     return __K;
+                                }
+                            } else if (currGD == CR) {
+                                //D, R
+                                currGD = mGestureRecord.get(ptr++);
+                                if (currGD == IDLE) {
+                                    return __D;
+                                } else if (currGD == DR && mGestureRecord.get(ptr) == IDLE) {
+                                    return __R;
                                 }
                             }
                         }
@@ -269,6 +302,15 @@ public class AlphabetDiscView extends View implements View.OnTouchListener {
                             currGD = mGestureRecord.get(ptr++);
                             if (currGD == DN && mGestureRecord.get(ptr) == IDLE) {
                                 return __T;
+                            }
+                        }
+                    } else if (currGD == CL) {
+                        //G
+                        currGD = mGestureRecord.get(ptr++);
+                        if (currGD == IDLE) {
+                            currGD = mGestureRecord.get(ptr++);
+                            if (currGD == RT && mGestureRecord.get(ptr++) == DN && mGestureRecord.get(ptr) == IDLE) {
+                                return __G;
                             }
                         }
                     }
@@ -345,6 +387,22 @@ public class AlphabetDiscView extends View implements View.OnTouchListener {
             }
         }
         return cnt;
+    }
+
+    private void fixLetterData() {
+        if (mGestureRecord == null) {
+            return;
+        }
+        int offset = Collections.indexOfSubList(mGestureRecord, RIGHT_CIRCLE);
+        while (offset != -1) {
+            CollectionUtils.replaceCollectionToObj(mGestureRecord, RIGHT_CIRCLE, CR);
+            offset = Collections.indexOfSubList(mGestureRecord, RIGHT_CIRCLE);
+        }
+        offset = Collections.indexOfSubList(mGestureRecord, LEFT_CIRCLE);
+        while (offset != -1) {
+            CollectionUtils.replaceCollectionToObj(mGestureRecord, LEFT_CIRCLE, CL);
+            offset = Collections.indexOfSubList(mGestureRecord, LEFT_CIRCLE);
+        }
     }
 
     private class LetterRunnable implements Runnable {
